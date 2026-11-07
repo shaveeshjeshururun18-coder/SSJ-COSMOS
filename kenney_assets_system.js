@@ -61,8 +61,9 @@
                         const scene = gltf.scene;
                         scene.traverse((child) => {
                             if (child.isMesh) {
-                                child.castShadow = true;
-                                child.receiveShadow = true;
+                                child.castShadow = false;
+                                child.receiveShadow = false;
+                                child.frustumCulled = true;
                                 if (child.material) {
                                     child.material.roughness = 0.65;
                                     child.material.metalness = 0.15;

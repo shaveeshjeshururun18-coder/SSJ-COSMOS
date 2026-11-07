@@ -273,7 +273,7 @@
 
                 <button id="btn-view-toggle" class="control-btn px-2.5 py-1.5 rounded-xl text-[11px] font-bold flex items-center gap-1 shadow-md border-purple-400/60 bg-purple-950/70 text-purple-200">
                     <i class="fa-solid fa-eye text-purple-300"></i>
-                    <span id="view-mode-text">View: 1st Person (V)</span>
+                    <span id="view-mode-text">View: 3rd Person (V)</span>
                 </button>
 
                 <button id="btn-binoculars" class="control-btn px-2.5 py-1.5 rounded-xl text-[11px] font-bold flex items-center gap-1 shadow-md border-cyan-400/60 bg-cyan-950/70 text-cyan-200">
@@ -307,7 +307,7 @@
                     <span id="fps-badge" class="font-mono text-[11px] font-extrabold px-2 py-1.5 rounded-xl bg-slate-950/90 border border-emerald-500/60 text-emerald-400 shadow-md">60 FPS</span>
                     <button id="btn-perf-toggle" class="control-btn px-2.5 py-1.5 rounded-xl text-[11px] font-bold flex items-center gap-1 shadow-md border-sky-400/70 bg-sky-950/80 text-sky-200 hover:border-sky-300 transition-all cursor-pointer" title="Click to cycle Graphics Modes: ULTRA (60FPS) -> HIGH -> FAST (Max Boost)">
                         <i class="fa-solid fa-gauge-high text-sky-400" id="perf-icon"></i>
-                        <span id="perf-mode-label">ULTRA</span>
+                        <span id="perf-mode-label">BOOST</span>
                     </button>
                 </div>
                 <button id="btn-audio" class="control-btn px-2 py-1.5 rounded-xl text-[11px] font-bold flex items-center gap-1 shadow-md">
@@ -436,7 +436,7 @@
         let isNight = false;
         let flashlightOn = true;
         let FastSprintToggle = false;
-        let firstPersonView = true; // User requested 1st-person view!
+        let firstPersonView = false; // Start in 3rd-person view for open visibility
 
         // USER REQUEST: No creature or human should hurt the player unless clicked ON
         let canHurtPlayer = false;
@@ -523,7 +523,7 @@
                 name: 'YOUR LUXURY COASTAL MANSION',
                 desc: 'Your personal 2-story beachfront estate. Features a master bedroom respawn suite, grand chandelier, infinity pool, and dressed houseguests.',
                 x: 0, y: 6.2, z: -135,
-                bedPos: new THREE.Vector3(-10, 6.6, -143),
+                bedPos: new THREE.Vector3(0, 6.6, -128),
                 spawnYaw: 0
             },
             periyakovil: {
@@ -3091,11 +3091,11 @@
             scene.background = new THREE.Color(0x68b5e8);
             scene.fog = new THREE.FogExp2(0x68b5e8, 0.0014);
 
-            camera = new THREE.PerspectiveCamera(62, window.innerWidth / window.innerHeight, 0.2, 1600);
+            camera = new THREE.PerspectiveCamera(62, window.innerWidth / window.innerHeight, 0.2, 750);
             renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
             renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.25));
-            renderer.shadowMap.enabled = true;
+            renderer.setPixelRatio(1.0);
+            renderer.shadowMap.enabled = false;
             renderer.shadowMap.type = THREE.PCFShadowMap;
             renderer.domElement.addEventListener('webglcontextlost', (e) => {
                 e.preventDefault();
@@ -3114,7 +3114,7 @@
 
             sunLight = new THREE.DirectionalLight(0xfffbeb, 1.25);
             sunLight.position.set(120, 240, -140);
-            sunLight.castShadow = true;
+            sunLight.castShadow = false;
             sunLight.shadow.mapSize.width = 1024;
             sunLight.shadow.mapSize.height = 1024;
             sunLight.shadow.camera.near = 10;
@@ -3395,8 +3395,8 @@
         }
 
         function buildTerrainAndBeach() {
-            const segX = 220;
-            const segZ = 220;
+            const segX = 90;
+            const segZ = 90;
             const groundGeo = new THREE.PlaneGeometry(WORLD_SIZE, WORLD_SIZE, segX, segZ);
             groundGeo.rotateX(-Math.PI / 2);
 
@@ -5845,7 +5845,7 @@
         }
 
         function buildOceanSurface() {
-            oceanGeo = new THREE.PlaneGeometry(WORLD_SIZE, WORLD_SIZE, 54, 54);
+            oceanGeo = new THREE.PlaneGeometry(WORLD_SIZE, WORLD_SIZE, 32, 32);
             oceanGeo.rotateX(-Math.PI / 2);
 
             const oceanMat = new THREE.MeshStandardMaterial({
@@ -6680,11 +6680,12 @@
 
         function setupControls() {
             window.addEventListener('keydown', (e) => {
-                const keyCode = e.code || e.key || '';
-                if (keyCode === 'KeyW' || keyCode === 'ArrowUp') keys.w = true;
-                if (keyCode === 'KeyS' || keyCode === 'ArrowDown') keys.s = true;
-                if (keyCode === 'KeyA' || keyCode === 'ArrowLeft') keys.a = true;
-                if (keyCode === 'KeyD' || keyCode === 'ArrowRight') keys.d = true;
+                const keyCode = e.code || '';
+                const k = (e.key || '').toLowerCase();
+                if (keyCode === 'KeyW' || keyCode === 'ArrowUp' || k === 'w' || k === 'arrowup') keys.w = true;
+                if (keyCode === 'KeyS' || keyCode === 'ArrowDown' || k === 's' || k === 'arrowdown') keys.s = true;
+                if (keyCode === 'KeyA' || keyCode === 'ArrowLeft' || k === 'a' || k === 'arrowleft') keys.a = true;
+                if (keyCode === 'KeyD' || keyCode === 'ArrowRight' || k === 'd' || k === 'arrowright') keys.d = true;
                 if (keyCode === 'Space') {
                     if (cinematic.active) {
                         stopCutscene();
@@ -6738,11 +6739,12 @@
             });
 
             window.addEventListener('keyup', (e) => {
-                const keyCode = e.code || e.key || '';
-                if (keyCode === 'KeyW' || keyCode === 'ArrowUp') keys.w = false;
-                if (keyCode === 'KeyS' || keyCode === 'ArrowDown') keys.s = false;
-                if (keyCode === 'KeyA' || keyCode === 'ArrowLeft') keys.a = false;
-                if (keyCode === 'KeyD' || keyCode === 'ArrowRight') keys.d = false;
+                const keyCode = e.code || '';
+                const k = (e.key || '').toLowerCase();
+                if (keyCode === 'KeyW' || keyCode === 'ArrowUp' || k === 'w' || k === 'arrowup') keys.w = false;
+                if (keyCode === 'KeyS' || keyCode === 'ArrowDown' || k === 's' || k === 'arrowdown') keys.s = false;
+                if (keyCode === 'KeyA' || keyCode === 'ArrowLeft' || k === 'a' || k === 'arrowleft') keys.a = false;
+                if (keyCode === 'KeyD' || keyCode === 'ArrowRight' || k === 'd' || k === 'arrowright') keys.d = false;
                 if (keyCode === 'Space') keys.up = false;
                 if (keyCode === 'KeyC' || keyCode === 'ControlLeft') keys.down = false;
                 if (keyCode === 'ShiftLeft' || keyCode === 'ShiftRight') keys.shift = false;
@@ -6802,13 +6804,24 @@
 
             const bindHoldButton = (id, keyName) => {
                 const btn = document.getElementById(id);
-                const start = (e) => { e.preventDefault(); SoundEngine.init(); keys[keyName] = true; btn.classList.add('active'); };
-                const end = (e) => { e.preventDefault(); keys[keyName] = false; btn.classList.remove('active'); };
-                btn.addEventListener('mousedown', start);
-                btn.addEventListener('mouseup', end);
-                btn.addEventListener('mouseleave', end);
-                btn.addEventListener('touchstart', start);
-                btn.addEventListener('touchend', end);
+                if (!btn) return;
+                const start = (e) => {
+                    e.preventDefault();
+                    SoundEngine.init();
+                    keys[keyName] = true;
+                    btn.classList.add('active');
+                };
+                const end = (e) => {
+                    e.preventDefault();
+                    keys[keyName] = false;
+                    btn.classList.remove('active');
+                };
+                btn.addEventListener('pointerdown', start);
+                btn.addEventListener('pointerup', end);
+                btn.addEventListener('pointercancel', end);
+                btn.addEventListener('pointerleave', end);
+                btn.addEventListener('touchstart', start, { passive: false });
+                btn.addEventListener('touchend', end, { passive: false });
             };
 
             bindHoldButton('pad-w', 'w');
@@ -7229,13 +7242,13 @@
         let _lastIsNight = null;
         let _fpsFrames = 0;
         let _fpsLastTime = 0;
-        let currentPerfMode = 'ULTRA';
+        let currentPerfMode = 'BOOST';
 
         function togglePerformanceMode() {
             if (currentPerfMode === 'ULTRA') {
                 currentPerfMode = 'HIGH';
                 renderer.setPixelRatio(1.0);
-                renderer.shadowMap.enabled = true;
+                renderer.shadowMap.enabled = false;
                 sunLight.castShadow = true;
             } else if (currentPerfMode === 'HIGH') {
                 currentPerfMode = 'FAST';
@@ -7244,7 +7257,7 @@
                 sunLight.castShadow = false;
             } else {
                 currentPerfMode = 'ULTRA';
-                renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.25));
+                renderer.setPixelRatio(1.0);
                 renderer.shadowMap.enabled = true;
                 sunLight.castShadow = true;
             }
@@ -7606,13 +7619,19 @@
                 }
             }
 
-            // Update Landmark HUD automatically when entering a landmark area
+            // Update Landmark HUD automatically by finding the closest landmark
+            let closestKey = null;
+            let minD = 48;
             for (const key in LANDMARKS) {
                 const lm = LANDMARKS[key];
-                if (Math.hypot(player.pos.x - lm.x, player.pos.z - lm.z) < 42) {
-                    updateLandmarkHUD(key);
-                    break;
+                const d = Math.hypot(player.pos.x - lm.x, player.pos.z - lm.z);
+                if (d < minD) {
+                    minD = d;
+                    closestKey = key;
                 }
+            }
+            if (closestKey) {
+                updateLandmarkHUD(closestKey);
             }
 
             const hoverOffset = Math.sin(elapsed * 4.5) * 0.18;
@@ -7759,7 +7778,7 @@
                 }
 
                 if (player.mode === 'WALK') {
-                    const walkSpeed = isSprinting ? 14.5 : 8.5;
+                    const walkSpeed = isSprinting ? 25.0 : 14.0;
                     player.pos.addScaledVector(moveDir, walkSpeed * dt);
                     const nextStandingY = getStandingHeight(player.pos.x, player.pos.y, player.pos.z);
                     player.pos.y = THREE.MathUtils.lerp(player.pos.y, nextStandingY, 0.35);
