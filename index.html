@@ -698,7 +698,7 @@
         // Camera Orbit
         let camYaw = 0;
         let camPitch = 0.18;
-        let camDist = 8.5;
+        let camDist = 5.8;
         let isDragging = false;
         let prevMouse = { x: null, y: null };
 
@@ -2027,14 +2027,13 @@
         roughness: 0.45,
         metalness: 0.15
       }),
-      tintedGlass: new THREE.MeshPhysicalMaterial({
+      tintedGlass: new THREE.MeshStandardMaterial({
         name: 'Mat_Window_Tinted_Glass',
         color: 0x111e1c,
         roughness: 0.15,
         metalness: 0.1,
-        transmission: 0.45,
         transparent: true,
-        opacity: 0.82
+        opacity: 0.55
       }),
       ironGrille: new THREE.MeshStandardMaterial({
         name: 'Mat_Security_Iron_Grille',
@@ -2846,7 +2845,7 @@
       // Tall Double-Door Dark Grey Refrigerator (`10748.jpg`)
       makeBox(0.72, 1.78, 0.72, MATS.stepDarkTread, 0.48, P + 0.89, -frontPorchDepth - 4.85, colInt, 'Living_DoubleDoor_Refrigerator');
       // 2 Translucent Plastic Water Dispenser Cans on floor beside Refrigerator (`10748.jpg`)
-      const canMat = new THREE.MeshPhysicalMaterial({ color: 0xcbeafe, roughness: 0.2, transmission: 0.55, transparent: true, opacity: 0.8 });
+      const canMat = new THREE.MeshStandardMaterial({ color: 0xcbeafe, roughness: 0.2, transparent: true, opacity: 0.65 });
       [0, 0.32].forEach((cz, cIdx) => {
         const can = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, 0.42, 14), canMat);
         can.position.set(0.32, P + 0.23, -frontPorchDepth - 4.25 + cz);
@@ -3314,6 +3313,13 @@
             setupControls();
 
             window.addEventListener('resize', onResize);
+            // Cache point lights for high-speed distance culling
+            window._pointLightsCache = [];
+            scene.traverse(obj => {
+                if (obj.isPointLight || obj.isSpotLight) {
+                    window._pointLightsCache.push(obj);
+                }
+            });
 
             // Initialize SSJ Open World Archipelago Integration System
             if (window.SSJArchipelago) {
@@ -6682,10 +6688,10 @@
             window.addEventListener('keydown', (e) => {
                 const keyCode = e.code || '';
                 const k = (e.key || '').toLowerCase();
-                if (keyCode === 'KeyW' || keyCode === 'ArrowUp' || k === 'w' || k === 'arrowup') keys.w = true;
-                if (keyCode === 'KeyS' || keyCode === 'ArrowDown' || k === 's' || k === 'arrowdown') keys.s = true;
-                if (keyCode === 'KeyA' || keyCode === 'ArrowLeft' || k === 'a' || k === 'arrowleft') keys.a = true;
-                if (keyCode === 'KeyD' || keyCode === 'ArrowRight' || k === 'd' || k === 'arrowright') keys.d = true;
+                if (keyCode === 'KeyW' || keyCode === 'ArrowUp' || k === 'w' || k === 'arrowup' || keyCode === 'Numpad8') keys.w = true;
+                if (keyCode === 'KeyS' || keyCode === 'ArrowDown' || k === 's' || k === 'arrowdown' || keyCode === 'Numpad2') keys.s = true;
+                if (keyCode === 'KeyA' || keyCode === 'ArrowLeft' || k === 'a' || k === 'arrowleft' || keyCode === 'Numpad4') keys.a = true;
+                if (keyCode === 'KeyD' || keyCode === 'ArrowRight' || k === 'd' || k === 'arrowright' || keyCode === 'Numpad6') keys.d = true;
                 if (keyCode === 'Space') {
                     if (cinematic.active) {
                         stopCutscene();
@@ -6758,6 +6764,13 @@
             });
 
             const dom = renderer.domElement;
+            let isMouseDown = false;
+            dom.addEventListener('mousedown', (e) => {
+                isMouseDown = true;
+                prevMouse.x = e.clientX;
+                prevMouse.y = e.clientY;
+            });
+            window.addEventListener('mouseup', () => { isMouseDown = false; });
             dom.addEventListener('click', () => {
                 SoundEngine.init();
                 if (dom.requestPointerLock) {
@@ -6772,7 +6785,7 @@
                 if (document.pointerLockElement === dom) {
                     camYaw -= e.movementX * 0.0032 * sensMult;
                     camPitch = THREE.MathUtils.clamp(camPitch + e.movementY * 0.0028 * sensMult, -0.85, 1.35);
-                } else {
+                } else if (isDragging || isMouseDown) {
                     if (prevMouse.x !== null && prevMouse.y !== null) {
                         const dx = e.clientX - prevMouse.x;
                         const dy = e.clientY - prevMouse.y;
@@ -6807,21 +6820,27 @@
                 if (!btn) return;
                 const start = (e) => {
                     e.preventDefault();
+                    e.stopPropagation();
                     SoundEngine.init();
                     keys[keyName] = true;
-                    btn.classList.add('active');
+                    btn.classList.add('active', 'scale-95', 'bg-amber-500/80');
+                    if (e.pointerId && btn.setPointerCapture) {
+                        try { btn.setPointerCapture(e.pointerId); } catch (_) {}
+                    }
                 };
                 const end = (e) => {
                     e.preventDefault();
+                    e.stopPropagation();
                     keys[keyName] = false;
-                    btn.classList.remove('active');
+                    btn.classList.remove('active', 'scale-95', 'bg-amber-500/80');
+                    if (e.pointerId && btn.releasePointerCapture) {
+                        try { btn.releasePointerCapture(e.pointerId); } catch (_) {}
+                    }
                 };
                 btn.addEventListener('pointerdown', start);
                 btn.addEventListener('pointerup', end);
                 btn.addEventListener('pointercancel', end);
-                btn.addEventListener('pointerleave', end);
-                btn.addEventListener('touchstart', start, { passive: false });
-                btn.addEventListener('touchend', end, { passive: false });
+                btn.addEventListener('contextmenu', e => e.preventDefault());
             };
 
             bindHoldButton('pad-w', 'w');
@@ -7268,6 +7287,14 @@
         }
 
         function updateEnvironment(dt, elapsed) {
+            // High-Performance Dynamic Light Culling: Turn off distant lights beyond 45m
+            if (window._pointLightsCache && _waveUpdateFrame % 3 === 0) {
+                const cPos = camera.position;
+                for (let i = 0; i < window._pointLightsCache.length; i++) {
+                    const l = window._pointLightsCache[i];
+                    l.visible = cPos.distanceTo(l.position) < (l.distance || 35) + 15;
+                }
+            }
             gameTime = (gameTime + dt * 0.06) % 24;
 
             const sunAngle = ((gameTime - 6) / 24) * Math.PI * 2;
@@ -7287,11 +7314,13 @@
                 lighthouseRotator.rotation.y = elapsed * 1.1;
             }
 
-            // Animate Niagara Falls Cascading Droplets
-            for (const drop of waterfallDrops) {
-                drop.position.y -= dt * 26;
-                if (drop.position.y < 1.0) {
-                    drop.position.y = 39.5;
+            // Animate Niagara Falls Cascading Droplets (culled when player > 80m away)
+            if (player.pos.distanceTo(new THREE.Vector3(195, 20, -310)) < 90) {
+                for (const drop of waterfallDrops) {
+                    drop.position.y -= dt * 26;
+                    if (drop.position.y < 1.0) {
+                        drop.position.y = 39.5;
+                    }
                 }
             }
 
@@ -7778,7 +7807,7 @@
                 }
 
                 if (player.mode === 'WALK') {
-                    const walkSpeed = isSprinting ? 25.0 : 14.0;
+                    const walkSpeed = isSprinting ? 32.0 : 18.0;
                     player.pos.addScaledVector(moveDir, walkSpeed * dt);
                     const nextStandingY = getStandingHeight(player.pos.x, player.pos.y, player.pos.z);
                     player.pos.y = THREE.MathUtils.lerp(player.pos.y, nextStandingY, 0.35);
@@ -7927,7 +7956,7 @@
                 );
                 camera.lookAt(lookTarget);
             } else {
-                const targetDist = (player.inFlyingCar || player.inSubmarine) ? 15.0 : camDist;
+                const targetDist = (player.inFlyingCar || player.inSubmarine) ? 15.0 : 5.8;
                 const targetPivot = player.pos.clone().add(new THREE.Vector3(0, 1.6, 0));
                 const offsetX = Math.sin(camYaw) * Math.cos(camPitch) * targetDist;
                 const offsetY = Math.sin(camPitch) * targetDist;
@@ -8343,7 +8372,7 @@
             }
 
             _radarFrame++;
-            if (_radarFrame % 2 === 0) {
+            if (_radarFrame % 6 === 0) {
                 try {
                     renderRadar();
                 } catch (radarErr) {
